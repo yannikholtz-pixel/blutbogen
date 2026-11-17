@@ -153,7 +153,7 @@ th{color:var(--muted);font-weight:600;font-size:13px}
 <script>
 'use strict';
 // ================= Grundlagen =================
-const VERSION='1.7';
+const VERSION='1.8';
 const W=1600,H=900,G=720,MINV=260,MAXP=6500,RES=1.5,TAU=Math.PI*2;
 const rand=(a,b)=>a+Math.random()*(b-a), clamp=(v,a,b)=>v<a?a:v>b?b:v, lerp=(a,b,t)=>a+(b-a)*t;
 const pick=a=>a[(Math.random()*a.length)|0];
@@ -367,6 +367,7 @@ const FX={
     FX.blood(x,y,vx,vy,(head?60:28)+dmg*.6,head?.5:.35,200,head?750:620);
     FX.blood(x,y,-vx,-vy*.3-200,head?20:10,.9,80,300);FX.mist(x,y,head?10:5);
     if(mode==='online'&&pi===net.myIdx)screenSplat(head?14:5);
+    if(p.alive&&!p.bubble&&Math.random()<.3)p.bubble={t:2.2,txt:pick(HITQUIP)};
     if(head){for(let i=0;i<3;i++)gibs.push({kind:'chunk',x,y,vx:vx*.25+rand(-120,120),vy:rand(-380,-120),rot:0,vr:rand(-15,15),s:rand(2.5,4.5),rest:0,life:9});}
     sfx(head?'head':'flesh');shake=Math.min(1,shake+(head?.45:.22));if(head){hitstop=.06;flash=Math.max(flash,.35);}
     FX.text(x,y-10,'-'+Math.round(dmg),head?'#ff4040':'#ffe7c4',head?30:22);if(head)FX.text(p.x,p.y-110,'KOPFSCHUSS!','#ff2a3a',30);},
@@ -384,7 +385,7 @@ const FX={
     sfx('boom');shake=Math.min(1,shake+.6);flash=Math.max(flash,.25);},
   siphon(fi,ti,n){const a=players[fi],b=players[ti];if(!a||!b)return;for(let i=0;i<n;i++)addP({k:5,x:a.x+rand(-8,8),y:a.y-45+rand(-10,10),vx:rand(-120,120),vy:rand(-220,-60),r:rand(1.5,3),life:2.5,t:ti});},
   kill(pi,ki,zone,fallDir,headOff,gib){const p=players[pi];if(!p)return;if(gib)p.gibbed=true;
-    {const kk=players[ki];p.death={cause:gib?'gib':DEATH[zone]?zone:'grab',killer:ki===pi?'dir selbst':kk?kk.name:null,t:0};}
+    {const kk=players[ki],cause=gib?'gib':DEATH[zone]?zone:'grab';p.death={cause,line:pick(DEATH[cause][1]),killer:ki===pi?'dir selbst':kk?kk.name:null,t:0};if(kk&&ki!==pi&&kk.alive)kk.bubble={t:3,txt:pick(zone==='head'?HEADQUIP:KILLQUIP)};}
     const nx=p.x,ny=p.y-58;
     FX.blood(nx,ny,0,-1,90,1.4,150,600);FX.mist(nx,ny,16);
     if(headOff){gibs.push({kind:'head',x:p.x,y:p.y-67,vx:fallDir*rand(120,320),vy:rand(-520,-300),rot:0,vr:rand(-14,14),s:1,rest:0,col:p.col,life:999,pi});}
@@ -406,9 +407,9 @@ const FX={
   mobhit(x,y,vx,vy,dmg,small){FX.blood(x,y,vx,vy,small?14:26,.6,120,480);FX.mist(x,y,small?3:6);if(!small)FX.text(x,y-14,'-'+dmg,'#ffb070',22);sfx(small?'pop':'flesh');},
   mobdie(type,x,y){if(type==='ritter'){gibs.push({kind:'helm',x,y:y-60,vx:rand(-200,200),vy:-420,rot:0,vr:rand(-10,10),s:1,rest:0,life:999});gibs.push({kind:'torso',x,y,vx:rand(-60,60),vy:-200,rot:0,vr:rand(-6,6),s:1,rest:0,col:{c:'#f4d03f',d:'#b8901a'},life:999});
       FX.blood(x,y,0,-1,150,3,150,650);FX.mist(x,y,22);FX.text(x,y-110,pick(RITTER.dead),'#f2e6d4',18);sfx('death');shake=1;slowmo=Math.max(slowmo,.8);return;}
-    if(type==='skelett'){for(let i=0;i<18;i++)addP({k:6,x,y,vx:rand(-200,200),vy:rand(-320,-60),r:2,life:rand(1.5,2.5),rot:rand(0,TAU),vr:rand(-10,10),c:pick(['#e8e0d0','#d8d0c0','#fff'])});FX.text(x,y-20,pick(['KLAPPER!','KNOCHENBRUCH!','RIP… nochmal.']),'#e8e0d0',20);sfx('pop');return;}
+    if(type==='skelett'){for(let i=0;i<18;i++)addP({k:6,x,y,vx:rand(-200,200),vy:rand(-320,-60),r:2,life:rand(1.5,2.5),rot:rand(0,TAU),vr:rand(-10,10),c:pick(['#e8e0d0','#d8d0c0','#fff'])});FX.text(x,y-20,pick(['KLAPPER!','KNOCHENBRUCH!','RIP… nochmal.','Zurück ins Grab!','Knochenmehl!','Doppelt tot hält besser.']),'#e8e0d0',20);sfx('pop');return;}
     if(type==='ufo'){for(let i=0;i<40;i++){const a=rand(0,TAU),v=rand(80,420);addP({k:2,x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v,r:rand(2,5),life:rand(.3,.8),m:.8});}for(let i=0;i<12;i++)addP({k:3,x,y,vx:rand(-40,40),vy:rand(-60,0),r:rand(10,20),life:1.4,m:1.4});FX.blood(x,y,0,1,30,1.5,80,300);sfx('boom');shake=1;flash=Math.max(flash,.4);return;}
-    if(type==='huhn'){for(let i=0;i<22;i++)addP({k:6,x,y,vx:rand(-220,220),vy:rand(-320,-40),r:2,life:rand(2,3.2),rot:rand(0,TAU),vr:rand(-6,6),c:pick(['#fff','#f4efe4','#e8e0d0'])});FX.text(x,y-20,pick(['GACK!','BOCK-BOOM!','KIKERIKI-KAWUMM!']),'#fff2a0',22);return;}
+    if(type==='huhn'){for(let i=0;i<22;i++)addP({k:6,x,y,vx:rand(-220,220),vy:rand(-320,-40),r:2,life:rand(2,3.2),rot:rand(0,TAU),vr:rand(-6,6),c:pick(['#fff','#f4efe4','#e8e0d0'])});FX.text(x,y-20,pick(['GACK!','BOCK-BOOM!','KIKERIKI-KAWUMM!','EI-XPLOSION!','HÜHNERFRIKASSEE!','FEDERN ÜBERALL!','GACKERNDE GRANATE!']),'#fff2a0',22);return;}
     if(type==='kraehe'){for(let i=0;i<16;i++)addP({k:6,x,y,vx:rand(-160,160),vy:rand(-200,40),r:2,life:rand(1.5,2.5),rot:rand(0,TAU),vr:rand(-8,8),c:pick(['#111','#1c1c22','#2a2a30'])});FX.blood(x,y,0,1,14,2,60,260);sfx('crow');}
     else{FX.blood(x,y,0,-1,140,3.1,150,650);FX.mist(x,y,24);for(let i=0;i<8;i++)gibs.push({kind:'chunk',x,y,vx:rand(-320,320),vy:rand(-500,-120),rot:0,vr:rand(-15,15),s:rand(4,8),rest:0,life:14});sfx('roar');shake=1;flash=Math.max(flash,.5);slowmo=Math.max(slowmo,.8);}},
   timer(name,t){timers[name]=t;},
@@ -569,11 +570,16 @@ function onHit(a,p,zone){
   return false;
 }
 const LIMBMSG={
-  arm:["Gib mir 'nen High-Five! … Ach so.","Dein Arm hat sich selbstständig gemacht.","Ab jetzt schießt du mit den Zähnen.","Halb so viele Handschuhe kaufen – spart Geld!","Hand aufs Herz … geht nicht mehr.","Dein Arm macht Urlaub. Ohne dich.","Armselig. Im wahrsten Sinne.","Heute war wohl nicht dein Arm-Tag.","Winken wird ab jetzt schwierig.","Na immerhin hast du noch einen zweiten!"],
-  arms2:["Keine Arme, keine Kekse.","Ab jetzt nur noch Fußball.","Du schießt jetzt mit den Füßen. Respekt.","T-Rex-Modus aktiviert.","Jetzt bloß nicht an der Nase kratzen müssen."],
-  leg:["Hinkebein-Modus aktiviert.","Du stehst jetzt da wie ein Flamingo.","Wer braucht schon zwei Beine?","Dein Bein hat gekündigt. Fristlos.","Hüpfen ist auch Sport.","Beinfreiheit: maximal.","Gut, dass Laufen hier eh verboten ist.","Kurzer Prozess mit deinem Schienbein."],
-  legs2:["Du bist jetzt offiziell Sitzschütze.","Endlich auf Augenhöhe mit den Grashalmen.","Unten ohne. Also, ohne Beine.","Wenigstens kannst du jetzt nicht mehr umfallen."],
-  dead:["Kopf hoch! … ach nee.","Das wird eine geschlossene Beerdigung.","Zumindest bist du jetzt leichter.","Du warst ein guter Schütze. Ein toter, aber gut.","Respawn? Gibt's erst nächste Runde.","Die Würmer bedanken sich."],
+  arm:["Gib mir 'nen High-Five! … Ach so.","Dein Arm hat sich selbstständig gemacht.","Ab jetzt schießt du mit den Zähnen.","Halb so viele Handschuhe kaufen – spart Geld!","Hand aufs Herz … geht nicht mehr.","Dein Arm macht Urlaub. Ohne dich.","Armselig. Im wahrsten Sinne.","Heute war wohl nicht dein Arm-Tag.","Winken wird ab jetzt schwierig.","Na immerhin hast du noch einen zweiten!",
+    "Daumen hoch – ab jetzt nur noch einer.","Dein Arm ist jetzt Deko.","Klatschen ist ab sofort ein Solo-Akt.","Tja, das war's mit Armdrücken.","Dein Ellbogen hat das Gebäude verlassen.","Du bist jetzt aerodynamischer!","Einarmiger Bandit – nur ohne Jackpot."],
+  arms2:["Keine Arme, keine Kekse.","Ab jetzt nur noch Fußball.","Du schießt jetzt mit den Füßen. Respekt.","T-Rex-Modus aktiviert.","Jetzt bloß nicht an der Nase kratzen müssen.",
+    "Selfies sind ab jetzt Geschichte.","Schießen mit dem Mund – du bist ein Künstler.","Zwei Ärmel zu viel am Pulli.","Umarmungen: abgesagt.","Wer kratzt dir jetzt den Rücken?"],
+  leg:["Hinkebein-Modus aktiviert.","Du stehst jetzt da wie ein Flamingo.","Wer braucht schon zwei Beine?","Dein Bein hat gekündigt. Fristlos.","Hüpfen ist auch Sport.","Beinfreiheit: maximal.","Gut, dass Laufen hier eh verboten ist.","Kurzer Prozess mit deinem Schienbein.",
+    "Socken kaufst du ab jetzt einzeln.","Ein Bein ist auch ein Bein. Irgendwie.","Pirat-Modus: Fehlt nur noch das Holzbein.","Dein Knie führt jetzt eine Fernbeziehung.","Stabil wie ein Wackelpudding.","Das Bein ist schon mal vorgegangen."],
+  legs2:["Du bist jetzt offiziell Sitzschütze.","Endlich auf Augenhöhe mit den Grashalmen.","Unten ohne. Also, ohne Beine.","Wenigstens kannst du jetzt nicht mehr umfallen.",
+    "Du bist jetzt ein sehr kurzer Schütze.","Hosen sind ab sofort optional.","Du sitzt jetzt einfach. Für immer.","Kniebeugen fallen ab heute aus."],
+  dead:["Kopf hoch! … ach nee.","Das wird eine geschlossene Beerdigung.","Zumindest bist du jetzt leichter.","Du warst ein guter Schütze. Ein toter, aber gut.","Respawn? Gibt's erst nächste Runde.","Die Würmer bedanken sich.",
+    "Game over, aber mit Stil.","Beim nächsten Mal: weniger sterben.","Zuschauen ist auch ein Sport.","Der Bestatter hat schon angerufen.","Du warst eine wertvolle Zielscheibe."],
 };
 function trySever(p,zone,spd,ki){
   if(!p.alive)return;const base=zone==='legs'?.35:zone==='arm'?.32:zone==='any'?.3:0;
@@ -764,16 +770,16 @@ function popItem(it,oi){
 }
 const MOBT=['drache','tornado','wurm','kraehe','huhn','skelett','faust','ufo','kugel','ritter'];
 const RITTER={
-  intro:['Halt! Wer hier vorbei will, muss erst MICH besiegen!','Ich bin der Gelbe Ritter, Sir Sturkopf von Starrsinn. Zittert!','Niemand kommt an mir vorbei. NIEMAND!'],
+  intro:['Halt! Wer hier vorbei will, muss erst MICH besiegen!','Ich bin der Gelbe Ritter, Sir Sturkopf von Starrsinn. Zittert!','Niemand kommt an mir vorbei. NIEMAND!','Noch ein Schritt und ich werde sehr, sehr ungemütlich!','Ich habe noch nie verloren. Okay, einmal. Zählt nicht.'],
   lost:[[],
-    ['Pah! Mit links kämpfe ich eh besser!','Den Arm brauchte ich nur zum Winken.','Ein Kriegsschaden. Steht mir gut.'],
-    ['Arme werden völlig überschätzt!','Ich habe noch Zähne, du Wicht!','Jetzt kämpfe ich eben mit Charisma.'],
-    ['Ein Bein reicht völlig! Ich bin Profi-Hüpfer!','Das war mein schlechteres Bein!','Hüpf, hüpf – du entkommst mir nicht!'],
-    ['Jetzt bin ich wenigstens auf Augenhöhe mit deinen Knöcheln!','Komm runter und kämpf wie ein Torso!','Ich rolle notfalls hinter dir her!']],
-  atk:[['Für die Ehre!','Nimm das, Schurke!','Hah! Und noch einer!','Spürst du meinen Stahl?'],['Ich beiß dir in die Wade!','Kopfnuss!','Spürst du meinen Zorn?!','Gnade? Kenne ich nicht!']],
+    ['Pah! Mit links kämpfe ich eh besser!','Den Arm brauchte ich nur zum Winken.','Ein Kriegsschaden. Steht mir gut.','Der wuchs eh schief.','Ich schwinge das Schwert ab jetzt mit Willenskraft!'],
+    ['Arme werden völlig überschätzt!','Ich habe noch Zähne, du Wicht!','Jetzt kämpfe ich eben mit Charisma.','Ich kämpfe jetzt mit meinem durchdringenden Blick!','Kein Problem, ich habe noch Ellbogen. Ach nein.'],
+    ['Ein Bein reicht völlig! Ich bin Profi-Hüpfer!','Das war mein schlechteres Bein!','Hüpf, hüpf – du entkommst mir nicht!','Das Bein hatte sowieso keine Zukunft.','Gleichgewicht ist was für Feiglinge!'],
+    ['Jetzt bin ich wenigstens auf Augenhöhe mit deinen Knöcheln!','Komm runter und kämpf wie ein Torso!','Ich rolle notfalls hinter dir her!','Endlich nie wieder Schuhe kaufen!','Ich bin jetzt schwerer zu treffen! Theoretisch!']],
+  atk:[['Für die Ehre!','Nimm das, Schurke!','Hah! Und noch einer!','Spürst du meinen Stahl?','Hiebe gratis!','Das ist für meinen Arm!'],['Ich beiß dir in die Wade!','Kopfnuss!','Spürst du meinen Zorn?!','Gnade? Kenne ich nicht!','Ich rolle dich platt!','Biss der Verzweiflung!']],
   hurt:['Ein Kitzeln!','Mehr hast du nicht drauf?','Haha! Daneben … fast.'],
   block:['GEBLOCKT!','Mein Schild lacht über dich!','Ha! Abgeprallt!'],
-  dead:['Das … war … ein taktischer Rückzug …','Ich … gebe … nicht … au…','Sag allen … ich hab gewonnen …'],
+  dead:['Das … war … ein taktischer Rückzug …','Ich … gebe … nicht … au…','Sag allen … ich hab gewonnen …','Ich … verlange … eine Revanche …','Das … zählt … nicht …'],
 };
 function spawnChickens(n,o){for(let i=0;i<n;i++)mobs.push({id:mobId++,type:'huhn',x:rand(60,W-60),y:-rand(20,420),vx:0,vy:0,st:0,t:0,fuse:rand(7,10),o,dir:1,sp:rand(80,120),hp:1,maxHp:1});}
 function monsterEvent(e,alive){
@@ -1188,24 +1194,29 @@ function drawTag(p){
   if(p.charging){ctx.fillStyle='rgba(0,0,0,.6)';ctx.fillRect(x-22,y+12,44,4);ctx.fillStyle=p.holdT>1.2?'#ff5050':'#ffe08a';ctx.fillRect(x-22,y+12,44*p.charge,4);}
 }
 const DEATH={
-  grab:['GESPICKT','Mehr Pfeile als ein Igel Stacheln hat.'],
-  head:['KOPF AB','Kopf hoch! … ach nee.'],
-  gib:['ZERFETZT','Wir sammeln dich mit dem Löffel auf.'],
-  drache:['GEGRILLT','Medium rare, mit Drachenatem verfeinert.'],
-  wurm:['VERSCHLUCKT','Du bist jetzt Wurmfutter. Wörtlich.'],
-  tornado:['WEGGEWEHT','Grüße an Dorothy in Oz.'],
-  kraehe:['ZERPICKT','Die Krähen sagen Danke fürs Essen.'],
-  lawine:['TIEFGEKÜHLT','Bis zum Frühling haltbar.'],
-  fire:['VERKOHLT','Riecht nach Grillabend.'],
-  boom:['IN DIE LUFT GEJAGT','Teile von dir landen immer noch.'],
-  bleed:['AUSGEBLUTET','Hättest du mal Feldscher gekauft.'],
-  ritter:['NIEDERGESTRECKT','Von einem Ritter, der nicht aufgeben kann.'],
-  skelett:['ERSCHLAGEN','Die Toten waren schneller als du.'],
-  faust:['ZERQUETSCHT','Von der Hand Gottes plattgemacht.'],
-  kugel:['PLATTGEWALZT','Indiana Jones lässt grüßen.'],
-  hai:['GEFRESSEN','Ein Hai. An Land. Aus einem Tornado.'],
-  fall:['ENTFÜHRT & FALLEN GELASSEN','Die Aliens fanden dich langweilig.'],
+  grab:['GESPICKT',['Mehr Pfeile als ein Igel Stacheln hat.','Du siehst aus wie ein Nadelkissen.','Ein Pfeil hätte gereicht. Es wurden viele.','Hier ruht ein Schütze. Sehr durchlöchert.','Luftig gekleidet ins Jenseits.']],
+  head:['KOPF AB',['Kopf hoch! … ach nee.','Du hast den Kopf verloren. Wortwörtlich.','Kopflos ins Verderben.','Wer braucht schon ein Gehirn?','Deine Mütze ist jetzt arbeitslos.']],
+  gib:['ZERFETZT',['Wir sammeln dich mit dem Löffel auf.','Du bist jetzt ein Puzzle mit 500 Teilen.','Konfetti aus Fleisch.','Bitte nicht zusammenkehren – Beweismittel.','Überall ein bisschen du.']],
+  drache:['GEGRILLT',['Medium rare, mit Drachenatem verfeinert.','Knusprig von außen, tot von innen.','Der Drache sagt: lecker.','Grillsaison eröffnet.']],
+  wurm:['VERSCHLUCKT',['Du bist jetzt Wurmfutter. Wörtlich.','Verdaut in drei bis fünf Werktagen.','Der Wurm hatte Hunger. Du warst da.','Ab in den Untergrund.']],
+  tornado:['WEGGEWEHT',['Grüße an die Wolken!','Einmal Schleudergang, bitte.','Du fliegst jetzt Business Class. Ohne Flugzeug.','Wind 1, du 0.']],
+  kraehe:['ZERPICKT',['Die Krähen sagen Danke fürs Essen.','Du warst das Buffet.','Pick, pick, weg.','Vogelfutter de luxe.']],
+  lawine:['TIEFGEKÜHLT',['Bis zum Frühling haltbar.','Eiskalt erwischt.','Frisch tiefgekühlt, ohne Konservierungsstoffe.','Cool bleiben – klappt jetzt dauerhaft.']],
+  fire:['VERKOHLT',['Riecht nach Grillabend.','Gut durch, bitte.','Heißer Abgang.','Feuer und Flamme – leider wörtlich.']],
+  boom:['IN DIE LUFT GEJAGT',['Teile von dir landen immer noch.','Du warst kurz ein Feuerwerk.','Bumm. Einfach nur bumm.','Ein explosiver Abschied.']],
+  bleed:['AUSGEBLUTET',['Hättest du mal Feldscher gekauft.','Pflaster hätten nicht gereicht.','Langsam, aber gründlich.','Ausgelaufen wie ein alter Tank.']],
+  ritter:['NIEDERGESTRECKT',['Von einem Ritter, der nicht aufgeben kann.','Besiegt von einem Mann ohne Beine. Autsch.','Er hatte nur noch einen Arm. Und du?','Die Ehre ist futsch. Du auch.']],
+  skelett:['ERSCHLAGEN',['Die Toten waren schneller als du.','Verprügelt von einem Gerippe ohne Muskeln.','Willkommen im Club der Knochen.','Klapper, klapper, aus.']],
+  faust:['ZERQUETSCHT',['Von der Hand Gottes plattgemacht.','Ein Schlag. Ein Fleck.','Höhere Gewalt im wahrsten Sinne.','Du bist jetzt ein Teppich.']],
+  kugel:['PLATTGEWALZT',['Plattgewalzt wie ein Pfannkuchen.','Der Stein rollt, du nicht mehr.','Flach wie ein Bierdeckel.','Steinschlag mit Anlauf.']],
+  hai:['GEFRESSEN',['Ein Hai. An Land. Aus einem Tornado.','Gefressen von einem Fisch, der fliegen kann.','Das Meer hat sich gerächt.','Sushi – nur andersrum.']],
+  fall:['ENTFÜHRT & FALLEN GELASSEN',['Die Aliens fanden dich langweilig.','Kurzer Ausflug ins All, harte Landung.','Rückgabe ohne Kassenbon.','Die Erde hat dich wieder.']],
 };
+const KILLQUIP=['Sauberer Schuss, oder?','Nächster!','Ups. War das deiner?','Zu leicht.','Ich nenne das: Präzision.','Bleib liegen!','Wer ist der Nächste?','Nicht persönlich nehmen.','Ruhe in Stücken.','Das kommt in mein Tagebuch.','Hab ich dich erwischt? Ja.','Ein Hoch auf meine Zielhand!'];
+const HEADQUIP=['Mitten in die Birne!','Kopfsache.','Haare schneiden kostet extra.','Volltreffer! Oben drauf!','Den Kopf hast du dir verdient.'];
+const HITQUIP=['Au!','Hey, das tat weh!','Das gibt einen blauen Fleck.','Nicht ins Gesicht!','Okay, jetzt ist es persönlich.','Mama!','Das war Absicht, oder?','Ich blute. Ein bisschen. Viel.','Autsch, mein Lieblingsorgan!','Das merk ich mir!','Danke, ich hab genug!'];
+const WINQUIP=['Der Letzte macht das Licht aus.','Überleben ist auch eine Kunst.','Pures Talent. Oder Glück.','Die anderen waren nur Kulisse.','Applaus, Applaus!','Unkraut vergeht nicht.'];
+const NOWINQUIP=['Alle tot. Ein Unentschieden der blutigen Sorte.','Keiner übrig. Gut gemacht, Leute.','Gewonnen hat … der Totengräber.'];
 let deathBig=0,clouds=[],twinkle=[];
 function genSky(){clouds=[];twinkle=[];
   for(let i=0;i<7;i++)clouds.push({x:rand(-200,W),y:rand(70,330),w:rand(160,380),h:rand(16,36),sp:rand(4,14),a:rand(.5,1)});
@@ -1347,7 +1358,7 @@ function drawDeathCard(x,y,w,h,p,big){const c=ctx,d=p.death,D=DEATH[d.cause]||DE
   c.shadowColor='#000';c.shadowBlur=24;c.fillStyle='#0d080b';c.beginPath();c.roundRect(0,0,w,h,12);c.fill();c.shadowBlur=0;c.strokeStyle=p.col.c;c.lineWidth=2;c.stroke();
   const ah=h*.6;c.save();c.beginPath();c.roundRect(6,6,w-12,ah,8);c.clip();c.translate(6,6);c.scale((w-12)/300,ah/200);drawDeathArt(c,d.cause,p);c.restore();
   c.textAlign='center';c.font=`900 ${Math.round(20*s)}px Cinzel,serif`;c.fillStyle='#ff3a4a';c.fillText((big?'DU BIST RAUS · ':p.name+' · ')+D[0],w/2,ah+6+24*s,w-20);
-  c.font=`italic 600 ${Math.round(12.5*s)}px Inter`;c.fillStyle='#f2e6d4';c.fillText(D[1],w/2,ah+6+44*s,w-20);
+  c.font=`italic 600 ${Math.round(12.5*s)}px Inter`;c.fillStyle='#f2e6d4';c.fillText(d.line||(Array.isArray(D[1])?D[1][0]:D[1]),w/2,ah+6+44*s,w-20);
   c.font=`600 ${Math.round(11*s)}px Inter`;c.fillStyle='#a8998a';c.fillText(d.killer?'Erledigt von '+d.killer:'Erledigt von höherer Gewalt',w/2,ah+6+62*s,w-20);
   c.restore();}
 function drawHUD(){
@@ -1412,12 +1423,13 @@ function drawHUD(){
     c.shadowColor='#ff7a20';c.shadowBlur=18;c.font='900 50px Cinzel,serif';c.lineWidth=7;c.strokeStyle='rgba(0,0,0,.7)';c.strokeText(evBanner.title,W/2,262);c.fillStyle='#ffb347';c.fillText(evBanner.title,W/2,262);c.shadowBlur=0;
     c.font='700 20px Inter';c.lineWidth=4;c.strokeText(evBanner.sub,W/2,286);c.fillStyle='#f2e6d4';c.fillText(evBanner.sub,W/2,286);c.globalAlpha=1;}
   if(phase==='roundEnd'){const al=players.filter(p=>p.alive);const t=al.length===1?al[0].name+' gewinnt die Runde':'Niemand überlebt';
-    c.fillStyle='rgba(0,0,0,.45)';c.fillRect(0,H/2-100,W,90);c.shadowColor=al.length===1?al[0].col.c:'#ff3044';c.shadowBlur=24;c.font='900 54px Cinzel,serif';c.lineWidth=7;c.strokeStyle='rgba(0,0,0,.65)';c.strokeText(t,W/2,H/2-38);c.fillStyle=al.length===1?al[0].col.c:'#ff3044';c.fillText(t,W/2,H/2-38);c.shadowBlur=0;}
+    c.fillStyle='rgba(0,0,0,.45)';c.fillRect(0,H/2-100,W,90);c.shadowColor=al.length===1?al[0].col.c:'#ff3044';c.shadowBlur=24;c.font='900 54px Cinzel,serif';c.lineWidth=7;c.strokeStyle='rgba(0,0,0,.65)';c.strokeText(t,W/2,H/2-38);c.fillStyle=al.length===1?al[0].col.c:'#ff3044';c.fillText(t,W/2,H/2-38);c.shadowBlur=0;if(!roundQuip)roundQuip=pick(al.length===1?WINQUIP:NOWINQUIP);c.font='italic 700 20px Inter';c.fillStyle='#f2e6d4';c.fillText(roundQuip,W/2,H/2-6);}
+  else roundQuip=null;
   if(deathBig>0&&mode==='online'){const me=players[net.myIdx];if(me&&me.death){const a=clamp(Math.min((5.5-deathBig)*4,deathBig*2),0,1);c.globalAlpha=a;c.fillStyle='rgba(0,0,0,.5)';c.fillRect(0,0,W,H);drawDeathCard(W/2-280,H/2-190,560,380,me,true);c.globalAlpha=1;}}
 }
 
 // ================= Shop =================
-let shopWinner=null,shopClosing=false;
+let shopWinner=null,shopClosing=false,roundQuip=null;
 function openShop(w){
   screen='shop';shopWinner=w;shopClosing=false;
   players.forEach(p=>{p.shop={cur:0,ready:p.ctrl==='cpu'};p.prevInp=inputFor(p)||{};if(p.ctrl==='cpu')botShop(p);});

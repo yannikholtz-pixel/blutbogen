@@ -79,7 +79,7 @@ th{color:var(--muted);font-weight:600;font-size:13px}
 <div id="menu" class="overlay">
   <div class="panel">
     <h1>BLUT<span>BOGEN</span></h1>
-    <p class="tag">Bogenduell für bis zu drei Schützen – gleichzeitig, gnadenlos, blutig.</p>
+    <p class="tag">Bogenduell für bis zu drei Schützen – gleichzeitig, gnadenlos, blutig. <span id="verTag" style="opacity:.6"></span></p>
     <div class="tabs"><button id="tabLocal" class="on">Lokal · ein PC</button><button id="tabOnline">Online · jeder am eigenen Gerät</button></div>
 
     <div id="localPane">
@@ -153,6 +153,7 @@ th{color:var(--muted);font-weight:600;font-size:13px}
 <script>
 'use strict';
 // ================= Grundlagen =================
+const VERSION='1.4';
 const W=1600,H=900,G=720,MINV=260,MAXP=6500,RES=1.5,TAU=Math.PI*2;
 const rand=(a,b)=>a+Math.random()*(b-a), clamp=(v,a,b)=>v<a?a:v>b?b:v, lerp=(a,b,t)=>a+(b-a)*t;
 const pick=a=>a[(Math.random()*a.length)|0];
@@ -248,7 +249,7 @@ let screen='menu';            // menu | lobby | game | shop | pause | end
 let mode='local';             // local | online
 let demo=true, phase='countdown', stateT=0, gtime=0, roundNum=0;
 let players=[], arrows=[], garrows=[], parts=[], gibs=[], texts=[], booms=[], pools=[], feed=[], ambient=[];
-let mobs=[], mobId=1, gMul=1, gravT=0, items=[], itemT=8, bolts=[], personal=null, splats=[], evT=14, evBanner=null, wind=0, windBase=0, windTarget=0, shake=0, slowmo=0, slowVictim=-1, hitstop=0, flash=0, arrowId=1, endT=0;
+let monsterDone=false, mobs=[], mobId=1, gMul=1, gravT=0, items=[], itemT=8, bolts=[], personal=null, splats=[], evT=14, evBanner=null, wind=0, windBase=0, windTarget=0, shake=0, slowmo=0, slowVictim=-1, hitstop=0, flash=0, arrowId=1, endT=0;
 const cam={x:W/2,y:H/2,z:1};
 const settings={wins:3,blood:1,wind:1};
 let slots=[{type:'human',name:'Spieler 1'},{type:'human',name:'Spieler 2'},{type:'cpu2',name:'Spieler 3'}];
@@ -661,7 +662,7 @@ function startRoundWith(seed,xs,windB){
   roundNum++;genWorld(seed,xs);
   arrows=[];garrows=[];parts=[];gibs=[];texts=[];booms=[];pools=[];feed=[];
   players.forEach((p,i)=>resetPlayer(p,xs[i]));
-  windBase=windB;wind=windTarget=windBase;evT=rand(9,12);evBanner=null;weather=null;ambient=[];personal=null;splats=[];gMul=1;gravT=0;items=[];itemT=rand(3.5,5.5);bolts=[];mobs=[];phase='countdown';stateT=3.2;slowmo=0;cam.z=1;cam.x=W/2;cam.y=H/2;
+  windBase=windB;wind=windTarget=windBase;evT=rand(8,11);monsterDone=false;evBanner=null;weather=null;ambient=[];personal=null;splats=[];gMul=1;gravT=0;items=[];itemT=rand(3.5,5.5);bolts=[];mobs=[];phase='countdown';stateT=3.2;slowmo=0;cam.z=1;cam.x=W/2;cam.y=H/2;
 }
 function startRound(){
   const xs=spawnXs(players.length);for(let i=xs.length-1;i>0;i--){const j=(Math.random()*(i+1))|0;[xs[i],xs[j]]=[xs[j],xs[i]];}
@@ -699,8 +700,8 @@ function worldEvent(){
   const alive=players.filter(p=>p.alive);if(alive.length<2)return;
   const opts=['nadel','beben','beben','tausch'];if(settings.wind)opts.push('boe','boe');opts.push(...theme.ev,...theme.ev);
   for(let k=0;k<2;k++)opts.push('drache','meteor','wurm','tornado','kraehen','huehner');
-  let e=pick(opts);if((e==='drache'||e==='tornado')&&mobs.some(m=>m.type===e))e='meteor';
-  if(monsterEvent(e,alive))return;
+  let e=pick(opts);if(!monsterDone)e=pick(['drache','meteor','wurm','tornado','kraehen','huehner']);if((e==='drache'||e==='tornado')&&mobs.some(m=>m.type===e))e='meteor';
+  if(monsterEvent(e,alive)){monsterDone=true;return;}
   if(e==='sturm'||e==='sandsturm'){if(settings.wind){windBase=(wind>0?-1:1)*rand(120,170);windTarget=windBase;}fx('weather',e,9);fx('event',e==='sturm'?'SCHNEESTURM':'SANDSTURM',e==='sturm'?'Eisiger Wind – kaum Sicht!':'Sand peitscht übers Feld!');return;}
   if(e==='nebel'){fx('weather','nebel',10);fx('event','NEBEL ZIEHT AUF','Ziele aus dem Gedächtnis …');return;}
   if(e==='lawine'){const p=pick(alive);const out=fx('reshape',p.x+rand(-25,25),rand(40,70),70,'snow');respawnArrows(out);fx('event','LAWINE',p.name+' wird verschüttet!');damage(p,15,-1,'lawine',0,-1,true);return;}
@@ -1207,10 +1208,11 @@ net.send=function(m){if(net.conn&&net.conn.open){try{net.conn.send(m);}catch(e){
 function hostOnData(conn,d){
   if(!d||!d.t)return;
   if(d.t==='hello'){
+    if(d.v!==VERSION){conn.send({t:'full',why:'Unterschiedliche Spielversionen (du: '+(d.v||'alt')+', Gastgeber: '+VERSION+'). Bitte ALLE einmal Strg + F5 drücken!'});setTimeout(()=>conn.close(),400);return;}
     const free=net.lobby.findIndex((s,i)=>i>0&&s.type!=='remote'&&s.type!=='me');
     if(free<0||screen!=='lobby'&&screen!=='end'){conn.send({t:'full',why:free<0?'Raum ist voll.':'Das Spiel läuft schon.'});setTimeout(()=>conn.close(),300);return;}
     net.lobby[free]={type:'remote',name:String(d.name||'Gast').slice(0,14),conn};
-    conn.send({t:'welcome',slot:free,code:net.code});renderLobby();bcastLobby();sfx('buy');return;
+    conn.send({t:'welcome',slot:free,code:net.code,v:VERSION});renderLobby();bcastLobby();sfx('buy');return;
   }
   const si=net.lobby.findIndex(s=>s.conn===conn);if(si<0)return;
   const p=players.find(q=>q.slot===si&&q.ctrl==='remote');
@@ -1249,7 +1251,7 @@ function joinRoom(){
   audioInit();onMsg('Verbinde…',true);
   const peer=new Peer();net.peer=peer;
   peer.on('open',()=>{const conn=peer.connect('blutbogen-'+code,{reliable:true});net.conn=conn;
-    conn.on('open',()=>{conn.send({t:'hello',name:myName()});});
+    conn.on('open',()=>{conn.send({t:'hello',name:myName(),v:VERSION});});
     conn.on('data',clientOnData);
     conn.on('close',()=>{if(net.role==='client')lostHost('Der Gastgeber hat das Spiel verlassen.');});});
   peer.on('error',e=>{onMsg(e.type==='peer-unavailable'?'Raum nicht gefunden. Code richtig?':'Fehler: '+e.type);});
@@ -1260,7 +1262,7 @@ function clientOnData(d){
   if(!d||!d.t)return;
   switch(d.t){
     case 'full':onMsg(d.why);try{net.peer.destroy();}catch(e){}break;
-    case 'welcome':net.role='client';net.code=d.code;net.myIdx=-1;mode='online';onMsg('');screen='lobby';showOnly('lobby');$('lobbyCode').textContent=d.code;net.lobby=[];break;
+    case 'welcome':if(d.v!==VERSION){onMsg('Der Gastgeber hat eine andere Spielversion ('+(d.v||'alt')+', du: '+VERSION+'). Bitte ALLE einmal Strg + F5 drücken!');try{net.peer.destroy();}catch(e){}break;}net.role='client';net.code=d.code;net.myIdx=-1;mode='online';onMsg('');screen='lobby';showOnly('lobby');$('lobbyCode').textContent=d.code;net.lobby=[];break;
     case 'lobby':net.lobby=d.L;Object.assign(settings,d.settings);if(screen==='lobby')renderLobby();break;
     case 'lobbyBack':toLobby();break;
     case 'start':Object.assign(settings,d.settings);demo=false;mode='online';players=d.P.map(o=>makePlayer(o.slot,o.name,'net',1));roundNum=0;break;
@@ -1326,6 +1328,7 @@ function frame(now){
   render(rdt);
   requestAnimationFrame(frame);
 }
+$('verTag').textContent='· Version '+VERSION;
 renderSlots();renderSettings('setLocal',true);startDemo();requestAnimationFrame(frame);
 </script>
 </body>

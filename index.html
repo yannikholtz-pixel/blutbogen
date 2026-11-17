@@ -98,7 +98,7 @@ th{color:var(--muted);font-weight:600;font-size:13px}
         <button id="joinBtn" class="btn">Beitreten</button>
       </div>
       <div id="onMsg" class="msg"></div>
-      <div class="help">Online-Steuerung (für alle gleich): <b>W/S</b> oder <b>↑/↓</b> zielen, <b>A/D</b> oder <b>←/→</b> umdrehen · Spannen mit <b>Leertaste</b>, <b>F</b> oder <b>Enter</b> · oder Gamepad.<br>Die Verbindung läuft direkt zwischen euren Geräten. Der Ersteller des Raums ist der Gastgeber und sollte nicht schließen.</div>
+      <div class="help">Online-Steuerung: <b>↑/↓</b> zielen · <b>←/→</b> umdrehen · <b>Enter</b> oder <b>Leertaste</b> halten = spannen, loslassen = schießen. (WASD + F und Gamepad gehen auch.)<br>Die Verbindung läuft direkt zwischen euren Geräten. Der Ersteller des Raums ist der Gastgeber und sollte nicht schließen.</div>
     </div>
   </div>
 </div>
@@ -877,7 +877,7 @@ function rematch(){if(mode==='online'){if(net.role==='host')hostStartMatch();}el
 
 // ================= Menü =================
 const TYPES=[['human','Mensch'],['cpu1','CPU leicht'],['cpu2','CPU normal'],['cpu3','CPU schwer'],['off','Aus']];
-function showOnly(id){for(const o of['menu','lobby','shop','pause','end','netlost'])$(o).classList.toggle('hidden',o!==id);}
+function showOnly(id){if(!id&&document.activeElement&&document.activeElement.blur)document.activeElement.blur();for(const o of['menu','lobby','shop','pause','end','netlost'])$(o).classList.toggle('hidden',o!==id);}
 function renderSlots(){
   $('slots').innerHTML=slots.map((s,i)=>`<div class="slot ${s.type==='off'?'off':''}" style="--c:${COLORS[i].c}"><input data-i="${i}" maxlength="14" value="${esc(s.name)}"><button class="btn type" data-i="${i}">${TYPES.find(t=>t[0]===s.type)[1]} ⟳</button><div class="ctl">${s.type==='human'?CTLTXT[i]+'<br>🎮 oder Gamepad '+(i+1):s.type==='off'?'Platz bleibt leer':'Computergegner'}</div></div>`).join('');
 }
@@ -1045,7 +1045,7 @@ function leaveOnline(){
 // ================= Eingabe & Loop =================
 addEventListener('keydown',e=>{
   if(e.target.tagName==='INPUT'){if(e.code==='Enter'&&e.target.id!=='joinCode')e.target.blur();return;}
-  keys[e.code]=true;if(GAMEKEYS.has(e.code))e.preventDefault();audioInit();
+  keys[e.code]=true;if(GAMEKEYS.has(e.code)){e.preventDefault();if(screen==='game'&&document.activeElement&&document.activeElement.tagName==='BUTTON')document.activeElement.blur();}audioInit();
   if(e.repeat)return;
   if(e.code==='Escape'){if(screen==='game'&&mode==='local'){screen='pause';showOnly('pause');}else if(screen==='pause'){screen='game';showOnly(null);}}
   if(e.code==='KeyM'){muted=!muted;}
